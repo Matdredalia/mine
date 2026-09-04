@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="color-scheme" content="light">
+    <title>Expressions Tracker</title>
+    <style>
+        /* ── reset & base ── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html {
+            font-size: 16px;
+            -webkit-text-size-adjust: 100%;
+        }
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            background: #a17948;
+            color: #352c04;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+            padding: 0 0 3rem 0;
+        }
+
+        /* ── spacing scale ── */
+        :root {
+            --space-2: 2px;
+            --space-4: 4px;
+            --space-8: 8px;
+            --space-12: 12px;
+            --space-16: 16px;
+            --space-20: 20px;
+            --space-24: 24px;
+            --space-32: 32px;
+            --space-48: 48px;
+            --accent: #6f4007;
+            --accent-light: #325c32;
+            --accent-dark: #4a6a4a;
+            --warn: #c49a5c;
+            --done-color: #286e25;
+            --reroll-color: #b0885a;
+            --border: #3d2400;
+            --card-bg: #966235;
+            --text: #ffead4;
+            --text-muted: #f6d7aa;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        /* ── header ── */
+        header {
+            background: var(--accent);
+            color: #ffffff;
+            padding: var(--space-20) var(--space-24);
+            text-align: center;
+        }
+        header h1 {
+            font-size: 1.35rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+        }
+        header p {
+            font-size: 0.85rem;
+            opacity: 0.85;
+            margin-top: var(--space-4);
+            font-weight: 400;
+        }
+
+        /* ── main container ── */
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: var(--space-20) var(--space-16);
+            width: 100%;
+            flex: 1;
+        }
+
+        /* ── environment picker ── */
+        .env-picker {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: var(--space-12);
+            margin-bottom: var(--space-20);
+            background: var(--card-bg);
+            padding: var(--space-16) var(--space-20);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .env-picker label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+        .env-picker select {
+            flex: 1;
+            min-width: 160px;
+            padding: var(--space-8) var(--space-12);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: #422a16;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: var(--text);
+            cursor: pointer;
+            appearance: auto;
+        }
+        .env-picker select:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .env-picker .add-env-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: var(--space-4) var(--space-8);
+            border-radius: var(--radius-sm);
+            transition: background 0.15s, color 0.15s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .env-picker .add-env-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent-dark);
+        }
+        .env-picker .add-env-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* ── progress bar ── */
+        .progress-banner {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: var(--space-12) var(--space-20);
+            margin-bottom: var(--space-16);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-8);
+        }
+        .progress-banner .label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 450;
+        }
+        .progress-banner .count {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+        .progress-banner .bar-wrap {
+            flex: 1 1 100%;
+            height: 6px;
+            background: #68440e;
+            border-radius: 99px;
+            overflow: hidden;
+            min-width: 60px;
+        }
+        .progress-banner .bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--done-color);
+            border-radius: 99px;
+            transition: width 0.3s ease;
+        }
+
+        /* ── table ── */
+        .table-wrap {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .expr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .expr-table thead th {
+            background: #2d1a02;
+            font-weight: 500;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: var(--text-muted);
+            padding: var(--space-10) var(--space-16);
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .expr-table thead th:last-child {
+            text-align: center;
+            width: 72px;
+        }
+        .expr-table tbody tr {
+            transition: background 0.1s;
+        }
+        .expr-table tbody tr:nth-child(even) {
+            background: #b38d2fc9;
+        }
+        .expr-table tbody tr:hover {
+            background: #856939;
+        }
+        .expr-table td {
+            padding: var(--space-8) var(--space-16);
+            border-bottom: 1px solid #211600;
+            vertical-align: middle;
+        }
+        .expr-table td:last-child {
+            text-align: center;
+            width: 72px;
+            padding: var(--space-4) var(--space-8);
+        }
+        .expr-table .expr-name {
+            font-weight: 450;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        /* ── status button ── */
+        .status-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: transparent;
+            font-size: 1.4rem;
+            cursor: pointer;
+            transition: background 0.12s, transform 0.08s;
+            line-height: 1;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+        }
+        .status-btn:hover {
+            background: #79541c;
+        }
+        .status-btn:active {
+            transform: scale(0.92);
+        }
+        .status-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .status-btn .empty-indicator {
+            color: #ccc8c0;
+            font-size: 1rem;
+            font-weight: 300;
+            opacity: 0.6;
+        }
+        .status-btn[data-status="inprogress"] {
+            font-size: 1.5rem;
+        }
+        .status-btn[data-status="done"] {
+            font-size: 1.5rem;
+        }
+        .status-btn[data-status="reroll"] {
+            font-size: 1.5rem;
+        }
+
+        /* ── quick summary ── */
+        .summary {
+            margin-top: var(--space-24);
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: var(--space-20);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        .summary h2 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: var(--space-12);
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: var(--space-10);
+        }
+        .summary-card {
+            background: #613b0d;
+            border-radius: var(--radius-sm);
+            padding: var(--space-10) var(--space-14);
+            border: 1px solid #251a02;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-8);
+        }
+        .summary-card .env-label {
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--text);
+            word-break: break-word;
+        }
+        .summary-card .env-count {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+            background: #e8e4de;
+            padding: 0 var(--space-8);
+            border-radius: 99px;
+            line-height: 1.6;
+            min-width: 32px;
+            text-align: center;
+        }
+
+        /* ── subtle add expression ── */
+        .add-expr-row {
+            text-align: center;
+            margin-top: var(--space-12);
+        }
+        .add-expr-row button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: var(--space-6) var(--space-12);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            transition: background 0.15s, color 0.15s;
+        }
+        .add-expr-row button:hover {
+            background: var(--accent-light);
+            color: var(--accent-dark);
+        }
+        .add-expr-row button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* ── footer ── */
+        .footer-note {
+            margin-top: var(--space-32);
+            text-align: center;
+            font-size: 0.7rem;
+            color: #b5b0a8;
+            letter-spacing: 0.02em;
+        }
+
+        /* ── responsive ── */
+        @media (max-width: 540px) {
+            header h1 {
+                font-size: 1.15rem;
+            }
+            .container {
+                padding: var(--space-12) var(--space-10);
+            }
+            .env-picker {
+                padding: var(--space-12) var(--space-14);
+                gap: var(--space-8);
+            }
+            .env-picker select {
+                min-width: 120px;
+                font-size: 0.85rem;
+            }
+            .expr-table td {
+                padding: var(--space-6) var(--space-12);
+            }
+            .expr-table td:last-child {
+                width: 60px;
+                padding: var(--space-2) var(--space-4);
+            }
+            .status-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+            .status-btn .empty-indicator {
+                font-size: 0.85rem;
+            }
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .progress-banner {
+                padding: var(--space-10) var(--space-14);
+            }
+        }
+        @media (max-width: 380px) {
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+            .env-picker {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .env-picker select {
+                width: 100%;
+            }
+            .env-picker .add-env-btn {
+                align-self: flex-end;
+            }
+        }
+
+        /* ── utility ── */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── HEADER ─── -->
+    <header>
+        <h1>✦ Expression Sprite Tracker</h1>
+        <p>Spencer Sprite status · Per Environment</p>
+    </header>
+
+    <!-- ─── MAIN ─── -->
+    <main class="container">
+
+        <!-- environment picker -->
+        <section class="env-picker" aria-label="Environment selector">
+            <label for="envSelect">environment</label>
+            <select id="envSelect" aria-describedby="envDesc"></select>
+            <button class="add-env-btn" id="addEnvBtn" aria-label="Add new environment">+ add environment</button>
+            <span id="envDesc" class="sr-only">Select an environment to view and edit expression statuses.</span>
+        </section>
+
+        <!-- progress banner -->
+        <section class="progress-banner" aria-live="polite">
+            <span class="label">Progress</span>
+            <span class="count" id="progressCount">0 / 52 done</span>
+            <div class="bar-wrap" aria-hidden="true">
+                <div class="bar-fill" id="progressFill"></div>
+            </div>
+        </section>
+
+        <!-- expression table -->
+        <div class="table-wrap">
+            <table class="expr-table" id="exprTable">
+                <thead>
+                    <tr>
+                        <th scope="col">expression</th>
+                        <th scope="col" id="statusColHead">status</th>
+                    </tr>
+                </thead>
+                <tbody id="exprBody"></tbody>
+            </table>
+        </div>
+
+        <!-- add expression row -->
+        <div class="add-expr-row">
+            <button id="addExprBtn" aria-label="Add new expression">+ add expression</button>
+        </div>
+
+        <!-- quick summary -->
+        <section class="summary" id="summarySection">
+            <h2>all environments</h2>
+            <div class="summary-grid" id="summaryGrid"></div>
+        </section>
+
+        <div class="footer-note">data saved locally · tap a status to cycle</div>
+    </main>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ─── data ──────────────────────────────────────────────────────
+            const DEFAULT_EXPRESSIONS = [
+                "Admiration", "Amusement", "Anger", "Annoyance", "Anxious",
+                "Approval", "Awe", "Bewildered", "Caring", "Confusion",
+                "Contempt", "Curiosity", "Desire", "Despair", "Disappointment",
+                "Disapproval", "Disdain", "Disgust", "Dread", "Elated",
+                "Embarrassment", "Exasperated", "Excitement", "Exhausted",
+                "Exhilaration", "Fear", "Frustrated", "Fury", "Gratitude",
+                "Grief", "Horrified", "Intrigued", "Joy", "Love",
+                "Lustful", "Nervousness", "Neutral", "Optimism", "Overwhelmed",
+                "Panic", "Pride", "Realization", "Relief", "Remorse",
+                "Reverence", "Sadness", "Shock", "Surprise", "Tenderness",
+                "Trepidation", "Unsettled", "Wonder"
+            ];
+
+            const DEFAULT_ENVIRONMENTS = [
+                "Coffee Shop",
+                "Home - PJs",
+                "Bed - Naked",
+                "Bed - PJs"
+            ];
+
+            const STORAGE_KEY = 'spencer_expr_tracker_v1';
+
+            // status cycle: null → "inprogress" → "done" → "reroll" → null
+            const STATUS_CYCLE = [null, "inprogress", "done", "reroll"];
+
+            // ─── state ──────────────────────────────────────────────────────
+            let expressions = [];
+            let environments = [];
+            let data = {}; // { envName: { exprName: status|null } }
+            let currentEnv = null;
+
+            // ─── DOM refs ──────────────────────────────────────────────────
+            const envSelect = document.getElementById('envSelect');
+            const addEnvBtn = document.getElementById('addEnvBtn');
+            const exprBody = document.getElementById('exprBody');
+            const addExprBtn = document.getElementById('addExprBtn');
+            const progressCount = document.getElementById('progressCount');
+            const progressFill = document.getElementById('progressFill');
+            const summaryGrid = document.getElementById('summaryGrid');
+            const statusColHead = document.getElementById('statusColHead');
+
+            // ─── storage ──────────────────────────────────────────────────
+            function loadState() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && typeof parsed === 'object' &&
+                            Array.isArray(parsed.expressions) &&
+                            Array.isArray(parsed.environments) &&
+                            parsed.data && typeof parsed.data === 'object') {
+                            expressions = parsed.expressions;
+                            environments = parsed.environments;
+                            data = parsed.data;
+                            // ensure all expressions exist in each environment
+                            for (const env of environments) {
+                                if (!data[env]) data[env] = {};
+                                for (const expr of expressions) {
+                                    if (!(expr in data[env])) {
+                                        data[env][expr] = null;
+                                    }
+                                }
+                            }
+                            return;
+                        }
+                    }
+                } catch (_) { /* ignore */ }
+                // fallback to defaults
+                expressions = [...DEFAULT_EXPRESSIONS];
+                environments = [...DEFAULT_ENVIRONMENTS];
+                data = {};
+                for (const env of environments) {
+                    data[env] = {};
+                    for (const expr of expressions) {
+                        data[env][expr] = null;
+                    }
+                }
+                saveState();
+            }
+
+            function saveState() {
+                try {
+                    const payload = {
+                        expressions,
+                        environments,
+                        data
+                    };
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                } catch (_) { /* storage full – silently ignore */ }
+            }
+
+            // ─── helpers ──────────────────────────────────────────────────
+            function getStatus(env, expr) {
+                if (data[env] && expr in data[env]) return data[env][expr];
+                return null;
+            }
+
+            function setStatus(env, expr, status) {
+                if (!data[env]) data[env] = {};
+                data[env][expr] = status;
+                saveState();
+            }
+
+            function nextStatus(current) {
+                const idx = STATUS_CYCLE.indexOf(current);
+                return STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+            }
+
+            function getDoneCount(env) {
+                let count = 0;
+                for (const expr of expressions) {
+                    if (getStatus(env, expr) === 'done') count++;
+                }
+                return count;
+            }
+
+            function getTotalCount() {
+                return expressions.length;
+            }
+
+            // ─── rendering ──────────────────────────────────────────────────
+            function renderEnvSelect() {
+                const val = currentEnv;
+                envSelect.innerHTML = '';
+                for (const env of environments) {
+                    const opt = document.createElement('option');
+                    opt.value = env;
+                    opt.textContent = env;
+                    envSelect.appendChild(opt);
+                }
+                if (val && environments.includes(val)) {
+                    envSelect.value = val;
+                } else {
+                    envSelect.value = environments[0] || '';
+                }
+                currentEnv = envSelect.value;
+            }
+
+            function renderTable() {
+                const env = currentEnv;
+                if (!env) {
+                    exprBody.innerHTML =
+                        '<tr><td colspan="2" style="text-align:center;padding:2rem;color:#7a7670;">Select an environment to begin.</td></tr>';
+                    statusColHead.textContent = 'status';
+                    updateProgress();
+                    return;
+                }
+
+                statusColHead.textContent = env;
+
+                // ensure data row exists
+                if (!data[env]) {
+                    data[env] = {};
+                    for (const expr of expressions) {
+                        data[env][expr] = null;
+                    }
+                    saveState();
+                }
+
+                let html = '';
+                for (const expr of expressions) {
+                    const st = getStatus(env, expr);
+                    let indicator = '';
+                    let dataAttr = '';
+
+                    if (st === 'inprogress') {
+                        indicator = '🟡';
+                        dataAttr = 'data-status="inprogress"';
+                    } else if (st === 'done') {
+                        indicator = '✅';
+                        dataAttr = 'data-status="done"';
+                    } else if (st === 'reroll') {
+                        indicator = '🔄';
+                        dataAttr = 'data-status="reroll"';
+                    } else {
+                        indicator = '<span class="empty-indicator">–</span>';
+                        dataAttr = 'data-status="null"';
+                    }
+
+                    const escapedExpr = expr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                    html += `<tr>
+                        <td class="expr-name">${escapedExpr}</td>
+                        <td>
+                            <button class="status-btn" ${dataAttr} data-expr="${escapedExpr}" aria-label="${escapedExpr}: ${st === null ? 'not started' : st}">
+                                ${indicator}
+                            </button>
+                        </td>
+                    </tr>`;
+                }
+                exprBody.innerHTML = html;
+                updateProgress();
+                renderSummary();
+            }
+
+            function updateProgress() {
+                const env = currentEnv;
+                if (!env || !data[env]) {
+                    progressCount.textContent = '0 / ' + getTotalCount() + ' done';
+                    progressFill.style.width = '0%';
+                    return;
+                }
+                const done = getDoneCount(env);
+                const total = getTotalCount();
+                progressCount.textContent = done + ' / ' + total + ' done';
+                const pct = total > 0 ? (done / total) * 100 : 0;
+                progressFill.style.width = pct + '%';
+            }
+
+            function renderSummary() {
+                let html = '';
+                for (const env of environments) {
+                    const done = getDoneCount(env);
+                    const total = getTotalCount();
+                    const label = env.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    html += `<div class="summary-card">
+                        <span class="env-label">${label}</span>
+                        <span class="env-count">${done}/${total}</span>
+                    </div>`;
+                }
+                summaryGrid.innerHTML = html;
+            }
+
+            // ─── full re-render ──────────────────────────────────────────
+            function renderAll() {
+                renderEnvSelect();
+                renderTable();
+                renderSummary();
+                updateProgress();
+            }
+
+            // ─── event handlers ──────────────────────────────────────────
+            function handleStatusClick(e) {
+                const btn = e.target.closest('.status-btn');
+                if (!btn) return;
+                const env = currentEnv;
+                if (!env) return;
+                const expr = btn.getAttribute('data-expr');
+                if (!expr) return;
+                const current = getStatus(env, expr);
+                const next = nextStatus(current);
+                setStatus(env, expr, next);
+                renderTable(); // re-render to keep everything consistent
+            }
+
+            function handleEnvChange() {
+                currentEnv = envSelect.value;
+                renderTable();
+            }
+
+            function handleAddEnv() {
+                const name = prompt('New environment name:');
+                if (!name || name.trim() === '') return;
+                const trimmed = name.trim();
+                if (environments.includes(trimmed)) {
+                    alert('That environment already exists.');
+                    return;
+                }
+                environments.push(trimmed);
+                data[trimmed] = {};
+                for (const expr of expressions) {
+                    data[trimmed][expr] = null;
+                }
+                saveState();
+                currentEnv = trimmed;
+                renderAll();
+            }
+
+            function handleAddExpr() {
+                const name = prompt('New expression name:');
+                if (!name || name.trim() === '') return;
+                const trimmed = name.trim();
+                if (expressions.includes(trimmed)) {
+                    alert('That expression already exists.');
+                    return;
+                }
+                // insert alphabetically-ish but keep user ordering: append
+                expressions.push(trimmed);
+                for (const env of environments) {
+                    if (!data[env]) data[env] = {};
+                    data[env][trimmed] = null;
+                }
+                saveState();
+                renderAll();
+            }
+
+            // ─── keyboard / accessibility for table ──────────────────────
+            // (click handler covers both mouse and keyboard via Enter/Space on button)
+
+            // ─── init ──────────────────────────────────────────────────────
+            function init() {
+                loadState();
+
+                // ensure all environments have data
+                for (const env of environments) {
+                    if (!data[env]) {
+                        data[env] = {};
+                        for (const expr of expressions) {
+                            data[env][expr] = null;
+                        }
+                    } else {
+                        // ensure all expressions exist
+                        for (const expr of expressions) {
+                            if (!(expr in data[env])) {
+                                data[env][expr] = null;
+                            }
+                        }
+                    }
+                }
+                saveState();
+
+                currentEnv = environments[0] || '';
+
+                // wire events
+                envSelect.addEventListener('change', handleEnvChange);
+                addEnvBtn.addEventListener('click', handleAddEnv);
+                addExprBtn.addEventListener('click', handleAddExpr);
+                exprBody.addEventListener('click', handleStatusClick);
+
+                renderAll();
+            }
+
+            init();
+
+        })();
+    </script>
+</body>
+</html>
